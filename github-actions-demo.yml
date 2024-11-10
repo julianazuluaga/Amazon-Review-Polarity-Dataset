@@ -1,0 +1,89 @@
+name: CI/CD/CT Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  # Job de CI: Ejecución de pruebas y análisis de código
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run lint
+        run: |
+          pip install flake8
+          flake8 data_pipeline.py test_pipeline.py
+
+      - name: Run tests
+        run: |
+          pytest test_pipeline.py --maxfail=1 --disable-warnings --junitxml=reports/test-results.xml
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v2
+        with:
+          name: test-results
+          path: reports/test-results.xml
+
+  # Job de CD: Despliegue en un contenedor de Docker
+  deploy:
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Log in to Docker Hub
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        run: |
+          echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+
+      - name: Build Docker image
+        run: |
+          docker build -t yourusername/data-pipeline:latest .
+
+      - name: Push Docker image
+        run: |
+          docker push yourusername/data-pipeline:latest
+
+  # Job de CT: Entrenamiento continuo del modelo
+  train:
+    runs-on: ubuntu-latest
+    needs: [test, deploy]
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Trigger model training
+        run: |
+          python train_model.py
