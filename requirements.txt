@@ -1,4 +1,9 @@
 pytest
 pandas
 numpy
+nltk
 vaderSentiment
+scikit-learn
+pytest
+kagglehub
+
