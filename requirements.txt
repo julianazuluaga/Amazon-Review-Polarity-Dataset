@@ -6,4 +6,6 @@ vaderSentiment
 scikit-learn
 pytest
 kagglehub
+tensorflow
+
 
